@@ -226,9 +226,9 @@ class SKELSequence(Node):
         mesh_name = "Bones"
         skel_colors = None
         if skel_coloring == "skinning_weights":
-            skel_colors = skining_weights_to_color(skel_layer.skel_weights.cpu().numpy(), alpha=255)
+            skel_colors = skining_weights_to_color(skel_layer.skel_weights.cpu().to_dense().numpy(), alpha=255)
         elif skel_coloring == "bone_label":
-            skel_colors = skining_weights_to_color(skel_layer.skel_weights_rigid.cpu().numpy(), alpha=255)
+            skel_colors = skining_weights_to_color(skel_layer.skel_weights_rigid.cpu().to_dense().numpy(), alpha=255)
 
         if skel_colors is None:
             self.bones_mesh_seq = Meshes(
@@ -317,11 +317,6 @@ class SKELSequence(Node):
                 skel_data["gender"] = "female"
             if skel_data["betas"].shape[0] == 1:
                 skel_data["betas"] = skel_data["betas"].repeat(skel_data["poses"].shape[0], axis=0)
-
-            import ipdb
-
-            ipdb.set_trace()
-
         else:
             raise ValueError(f"skel_seq_file must be a pkl or npz file, got {skel_seq_file}")
 

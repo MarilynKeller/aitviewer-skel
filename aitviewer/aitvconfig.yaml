@@ -15,7 +15,7 @@ datasets:
     "/is/cluster/work/mkeller2/Data/TML/AMASS_mocap" 
 
 # Pytorch configuration.
-device: "cuda:0"
+device: "cpu"
 f_precision: 32
 i_precision: 64
 
