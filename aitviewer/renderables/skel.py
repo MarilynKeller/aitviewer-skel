@@ -63,6 +63,7 @@ class SKELSequence(Node):
         is_rigged=False,
         show_joint_angles=False,
         z_up=False,
+        z_down=False,
         fps=None,
         fps_in=None,
         show_joint_arrows=True,
@@ -129,6 +130,7 @@ class SKELSequence(Node):
         self._is_rigged = is_rigged or show_joint_angles
         self._render_kwargs = kwargs
         self._z_up = z_up
+        self._z_down = z_down
 
         if not self._include_root:
             self.trans = torch.zeros_like(self.trans)
@@ -153,8 +155,11 @@ class SKELSequence(Node):
 
         self.skel_output = skel_output
 
-        if self._z_up:
+        assert not (self._z_up and self._z_down), "You have set both z_up and z_down to True. Please set only one of them."
+        if self._z_up and not C.z_up:
             self.rotation = np.matmul(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]), self.rotation)
+        elif self._z_down:
+            self.rotation = np.matmul(np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]), self.rotation)
 
         if visual == False:
             return
@@ -724,3 +729,18 @@ class SKELSequence(Node):
         # Only render outline of the mesh, skipping skeleton and rigid bodies.
         self.skin_mesh_seq.render_outline(*args, **kwargs)
         self.bones_mesh_seq.render_outline(*args, **kwargs)
+
+    def export_meshes(self, folder):
+        """ Export the sequence as meshes"""
+        assert os.path.exists(folder), f"Folder '{folder}' does not exist."
+        print(f"Exporting SKEL sequence to '{folder}'")
+        for i in tqdm.tqdm(range(self.n_frames)):
+            # Skeleton mesh
+            # self.skin_vertices = skel_output.skin_verts
+            # self.skel_vertices = skel_output.skel_verts
+            # self.skin_faces = skel_output.skin_f
+            # self.skel_faces = skel_output.skel_f
+            mesh = trimesh.Trimesh(vertices=self.skin_vertices[i], faces=self.skin_faces)
+            mesh.export(os.path.join(folder, f"SKEL_skin{i:04d}.ply"))
+            mesh = trimesh.Trimesh(vertices=self.skel_vertices[i], faces=self.skel_faces)
+            mesh.export(os.path.join(folder, f"SKEL_skel{i:04d}.ply"))

@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from scipy.spatial.transform import Rotation
 from smplx.joint_names import JOINT_NAMES, SMPLH_JOINT_NAMES
+import tqdm
 
 from aitviewer.configuration import CONFIG as C
 from aitviewer.models.smpl import SMPLLayer
@@ -26,7 +27,7 @@ from aitviewer.utils.so3 import (
     resample_rotations,
 )
 from aitviewer.utils.so3 import rot2aa_torch as rot2aa
-
+import trimesh
 
 class SMPLSequence(Node):
     """
@@ -49,6 +50,7 @@ class SMPLSequence(Node):
         is_rigged=True,
         show_joint_angles=False,
         z_up=False,
+        z_down=False,
         post_fk_func=None,
         icon="\u0093",
         **kwargs,
@@ -120,6 +122,7 @@ class SMPLSequence(Node):
         self._is_rigged = is_rigged or show_joint_angles
         self._render_kwargs = kwargs
         self._z_up = z_up
+        self._z_down = z_down
 
         if not self._include_root:
             self.poses_root = torch.zeros_like(self.poses_root)
@@ -166,8 +169,11 @@ class SMPLSequence(Node):
         else:
             global_oris = np.tile(np.eye(3), self.joints.shape[:-1])[np.newaxis]
 
+        assert not (self._z_up and self._z_down), "You have set both z_up and z_down to True. Please set only one of them."
         if self._z_up and not C.z_up:
             self.rotation = np.matmul(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]), self.rotation)
+        elif self._z_down:
+            self.rotation = np.matmul(np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]), self.rotation)
 
         self.rbs = RigidBodies(self.joints, global_oris, length=0.1, gui_affine=False, name="Joint Angles")
         self._add_node(self.rbs, enabled=self._show_joint_angles)
@@ -782,3 +788,11 @@ class SMPLSequence(Node):
 
         self.n_frames = len(self.poses_body)
         self.redraw()
+
+    def export_meshes(self, folder):
+        """ Export the sequence as meshes"""
+        assert os.path.exists(folder), f"Folder '{folder}' does not exist."
+        print(f"Exporting SMPL sequence to '{folder}'")
+        for i in tqdm.tqdm(range(self.n_frames)):
+            mesh = trimesh.Trimesh(vertices=self.vertices[i], faces=self.faces)
+            mesh.export(os.path.join(folder, f"SMPL_{i:04d}.ply"))
